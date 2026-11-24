@@ -17,13 +17,14 @@ const schema = {
     tool: {type: "string"}, arguments_json: {type: "string"}, answer: {type: "string"}
   }
 };
-const { binding, threadId, turn, image } = JSON.parse(input);
+const { binding, threadId, turn, image, model } = JSON.parse(input);
 if (!/^[a-f0-9]{64}$/.test(binding)) throw new Error("Invalid chat");
 const dir = join(tmpdir(), "skeeks-ai-chats", binding);
 await mkdir(dir,{recursive:true,mode:0o700});
 const sdk = new Codex({config:{features:{shell_tool:false}}});
 const options = {workingDirectory:dir, sandboxMode:"read-only", approvalPolicy:"never",
-  networkAccessEnabled:false, webSearchMode:"disabled", skipGitRepoCheck:true, modelReasoningEffort:"low"};
+  networkAccessEnabled:false, webSearchMode:"disabled", skipGitRepoCheck:true, modelReasoningEffort:"low",
+  ...(typeof model==="string" && /^[\w.:-]{1,80}$/.test(model) ? {model} : {})};
 const thread = threadId ? sdk.resumeThread(threadId,options) : sdk.startThread(options);
   const instructions = `Ты помощник в CRM. Работай только с REST API через следующий JSON-шаг.
 catalog содержит доступные операции этой установки и начало их описаний. Сам выбирай подходящую операцию и запрашивай её полную schema. Затем используй execute с аргументами по схеме.
@@ -45,5 +46,8 @@ globalRules — общие инструкции SkeekS, projectRules — акт�
     result=await thread.run(prompt,{outputSchema:schema,signal:AbortSignal.timeout(80000)});
   } finally { if(folder)await rm(folder,{recursive:true,force:true}); }
   if (result.items.some(x=>!["reasoning","agent_message"].includes(x.type))) throw new Error("Unexpected tool");
-  process.stdout.write(JSON.stringify({threadId:thread.id, step:JSON.parse(result.finalResponse)}));
+  // Token usage of this step in the common shape: input includes cached input.
+  const u=result.usage||{};
+  const usage={input:u.input_tokens||0,cached:u.cached_input_tokens||0,output:u.output_tokens||0,model:typeof model==="string"?model:""};
+  process.stdout.write(JSON.stringify({threadId:thread.id, step:JSON.parse(result.finalResponse), usage}));
 

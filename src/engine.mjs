@@ -19,7 +19,7 @@ export async function loadEngine(id) {
 const actions = new Set(["answer", "skill", "schema", "execute", "attachment", "background"]);
 
 export async function runEngineStep(engine, input) {
-  const {sessionId, step} = await engine.runStep(input);
+  const {sessionId, step, usage = null} = await engine.runStep(input);
   if (sessionId !== null && (typeof sessionId !== "string" || !sessionId.length || sessionId.length > 255)) {
     throw new Error("Некорректный идентификатор сессии движка.");
   }
@@ -31,5 +31,5 @@ export async function runEngineStep(engine, input) {
       (step.action === "execute" && typeof step.arguments_json !== "string")) {
     throw new Error("Некорректный ответ движка.");
   }
-  return {sessionId, step};
+  return {sessionId, step, usage};
 }

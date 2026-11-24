@@ -47,7 +47,12 @@ async function main(){
       const text=event.result.trim().replace(/^\x60{3}(?:json)?\s*|\s*\x60{3}$/g,"");
       let step;
       try{step=event.structured_output ?? JSON.parse(text);}catch{process.exitCode=47;return;}
-      process.stdout.write(JSON.stringify({sessionId:event.session_id,step}));return;
+      // Token usage in the common shape; cache reads and writes are part of the input.
+      const u=event.usage||{};
+      const usage={input:(u.input_tokens||0)+(u.cache_read_input_tokens||0)+(u.cache_creation_input_tokens||0),
+        cached:u.cache_read_input_tokens||0,output:u.output_tokens||0,
+        model:Object.keys(event.modelUsage||{})[0]||model||"",costUsd:typeof event.total_cost_usd==="number"?event.total_cost_usd:null};
+      process.stdout.write(JSON.stringify({sessionId:event.session_id,step,usage}));return;
     }
     throw Error();
   }finally{clearTimeout(timer);}
