@@ -16,7 +16,10 @@ async function main(){
   }
   let raw="";
   for await(const chunk of process.stdin){raw+=chunk;if(raw.length>5500000)throw Error();}
-  const {binding,sessionId,turn,image}=JSON.parse(raw);
+  const {binding,sessionId,turn,image,model:chosen,effort:level}=JSON.parse(raw);
+  // The model chosen in the chat wins over the profile default; the service validates it against the account catalog.
+  if(typeof chosen==="string" && /^claude-[a-z0-9.-]{1,60}$/.test(chosen))model=chosen;
+  const effort=["low","medium","high","xhigh","max"].includes(level)?level:undefined;
   if(!/^[a-f0-9]{64}$/.test(binding))throw Error();
   const cwd=join(env.HOME,"chats",binding);await mkdir(cwd,{recursive:true,mode:0o700});
   const abortController=new AbortController();
@@ -33,7 +36,7 @@ async function main(){
         action:{enum:["schema","execute","answer","skill","attachment","background"]},tool:{type:"string"},
         arguments_json:{type:"string"},answer:{type:"string"},display:{enum:["list","count"]}
       }}};
-    const stream=query({prompt:image?input():prompt,options:{cwd,env,model,outputFormat,resume:sessionId || undefined,
+    const stream=query({prompt:image?input():prompt,options:{cwd,env,model,effort,outputFormat,resume:sessionId || undefined,
       abortController,systemPrompt,settingSources:[],tools:[],strictMcpConfig:true,mcpServers:{},
       permissionMode:"dontAsk",canUseTool:async(name,toolInput)=>name==="StructuredOutput"?{behavior:"allow",updatedInput:toolInput}:{behavior:"deny",message:"Инструменты выполняет сервис."},maxTurns:4}});
     for await(const event of stream){

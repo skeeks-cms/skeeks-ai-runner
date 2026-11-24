@@ -3,7 +3,7 @@ import {spawn} from "node:child_process";
 const profiles={vclaude:"skeeks-claude",personal:"skeeks-claude-personal"};
 export function createClaudeEngine(profile){
   if(!Object.hasOwn(profiles,profile))throw Error("Не выбран профиль Claude.");
-  return {id:"claude-"+profile,async runStep({binding,sessionId,turn,image}){
+  return {id:"claude-"+profile,async runStep({binding,sessionId,turn,image,model,effort}){
     const {SKEEKS_AI_SSH_IDENTITY:key,SKEEKS_AI_HOST_KEY:alias,SKEEKS_AI_SSH_HOST:host}=process.env;
     if(!key || !alias || !host)throw Error("Не настроено соединение с раннером.");
     const command="runuser -u "+profiles[profile]+" -- /usr/local/bin/node /opt/skeeks-ai/claude/claude-turn.mjs "+profile;
@@ -22,7 +22,7 @@ export function createClaudeEngine(profile){
         try{resolve(JSON.parse(output));}catch{reject(Error("Некорректный ответ Claude Agent SDK."));}
       });
       child.stdin.on("error",()=>{});
-      child.stdin.end(JSON.stringify({binding,sessionId,turn,image}));
+      child.stdin.end(JSON.stringify({binding,sessionId,turn,image,model,effort}));
     });
   }};
 }
