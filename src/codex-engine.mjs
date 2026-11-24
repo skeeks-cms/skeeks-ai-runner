@@ -22,6 +22,9 @@ function decide(input) {
 
 export const codexEngine = {
   id: "codex",
+  // Resumed threads stay: measured 24.11.2026, a fresh thread per call loses the prompt cache and costs
+  // more uncached input than a resumed thread, although its total count is lower (statelessTurn in the service).
+  stateless: false,
   async runStep({binding, sessionId, turn, image, model, effort}) {
     const result = await decide({binding, threadId: sessionId, turn, image, model, effort});
     if (typeof result.threadId !== "string" || !/^[a-f0-9-]{36}$/.test(result.threadId)) {
