@@ -17,13 +17,14 @@ const schema = {
     tool: {type: "string"}, arguments_json: {type: "string"}, answer: {type: "string"}
   }
 };
-const { binding, threadId, turn, image, model } = JSON.parse(input);
+const { binding, threadId, turn, image, model, effort } = JSON.parse(input);
 if (!/^[a-f0-9]{64}$/.test(binding)) throw new Error("Invalid chat");
 const dir = join(tmpdir(), "skeeks-ai-chats", binding);
 await mkdir(dir,{recursive:true,mode:0o700});
 const sdk = new Codex({config:{features:{shell_tool:false}}});
 const options = {workingDirectory:dir, sandboxMode:"read-only", approvalPolicy:"never",
-  networkAccessEnabled:false, webSearchMode:"disabled", skipGitRepoCheck:true, modelReasoningEffort:"low",
+  networkAccessEnabled:false, webSearchMode:"disabled", skipGitRepoCheck:true,
+  modelReasoningEffort:["low","medium","high","xhigh","max"].includes(effort) ? effort : "low",
   ...(typeof model==="string" && /^[\w.:-]{1,80}$/.test(model) ? {model} : {})};
 const thread = threadId ? sdk.resumeThread(threadId,options) : sdk.startThread(options);
   const instructions = `Ты помощник в CRM. Работай только с REST API через следующий JSON-шаг.

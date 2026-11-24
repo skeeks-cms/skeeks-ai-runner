@@ -22,8 +22,8 @@ function decide(input) {
 
 export const codexEngine = {
   id: "codex",
-  async runStep({binding, sessionId, turn, image, model}) {
-    const result = await decide({binding, threadId: sessionId, turn, image, model});
+  async runStep({binding, sessionId, turn, image, model, effort}) {
+    const result = await decide({binding, threadId: sessionId, turn, image, model, effort});
     if (typeof result.threadId !== "string" || !/^[a-f0-9-]{36}$/.test(result.threadId)) {
       throw new Error("Codex SDK не вернул идентификатор сессии.");
     }
