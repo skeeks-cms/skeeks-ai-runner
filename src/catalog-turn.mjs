@@ -1,5 +1,5 @@
 import { Codex } from "@openai/codex-sdk";
-import { mkdir, mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -48,8 +48,16 @@ globalRules — общие инструкции SkeekS, projectRules — акт�
     result=await thread.run(prompt,{outputSchema:schema,signal:AbortSignal.timeout(80000)});
   } finally { if(folder)await rm(folder,{recursive:true,force:true}); }
   if (result.items.some(x=>!["reasoning","agent_message"].includes(x.type))) throw new Error("Unexpected tool");
-  // Token usage of this step in the common shape: input includes cached input.
+  // Codex reports usage accumulated over the whole thread (measured 24.11.2026: output 33, 63, 107…),
+  // so this step's usage is the difference with the totals saved after the previous step of the thread.
   const u=result.usage||{};
-  const usage={input:u.input_tokens||0,cached:u.cached_input_tokens||0,output:u.output_tokens||0,model:typeof model==="string"?model:""};
+  const total={input:u.input_tokens||0,cached:u.cached_input_tokens||0,output:u.output_tokens||0};
+  const totalsFile=join(dir,"usage-"+String(thread.id).replace(/[^a-f0-9-]/g,"")+".json");
+  let before={input:0,cached:0,output:0};
+  try{before=JSON.parse(await readFile(totalsFile,"utf8"));}catch{}
+  if(!(before.input<=total.input))before={input:0,cached:0,output:0};
+  await writeFile(totalsFile,JSON.stringify(total),{mode:0o600});
+  const usage={input:total.input-before.input,cached:Math.max(0,total.cached-before.cached),output:Math.max(0,total.output-before.output),
+    model:typeof model==="string"?model:""};
   process.stdout.write(JSON.stringify({threadId:thread.id, step:JSON.parse(result.finalResponse), usage}));
 
